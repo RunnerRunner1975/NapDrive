@@ -1,57 +1,43 @@
 <!doctype html><html lang="en-GB"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f172a"><meta name="apple-mobile-web-app-capable" content="yes">
-<title>NapDrive</title><link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<meta name="theme-color" content="#0f172a"><meta name="apple-mobile-web-app-capable" content="yes"><title>NapDrive V2</title>
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f1f5f9;color:#0f172a}
-header{background:#0f172a;color:#fff;padding:20px 18px}h1{margin:0;font-size:29px}header p{margin:5px 0 0;color:#cbd5e1}
-main{max-width:760px;margin:auto;padding:14px}.card{background:#fff;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px #0001}
+header{background:#0f172a;color:white;padding:20px 18px}h1{margin:0;font-size:29px}header p{margin:5px 0;color:#cbd5e1}
+main{max-width:760px;margin:auto;padding:14px}.card{background:white;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px #0001}
 label{display:block;font-weight:700;margin-bottom:7px}.field{margin-bottom:14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-input,button{font:inherit;width:100%;padding:13px 14px;border-radius:13px;border:1px solid #cbd5e1;background:#fff}
-button{border:0;background:#0f172a;color:#fff;font-weight:750}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat{background:#f8fafc;border-radius:14px;padding:12px}.stat b{display:block;font-size:21px;margin-top:3px}
+input,select,button{font:inherit;width:100%;padding:13px 14px;border-radius:13px;border:1px solid #cbd5e1;background:white}button{border:0;background:#0f172a;color:white;font-weight:750}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f8fafc;border-radius:14px;padding:12px}.stat b{display:block;font-size:21px;margin-top:3px}
 #map{height:430px;border-radius:16px}.hidden{display:none}.ok{font-size:20px;font-weight:800}.muted{color:#64748b;font-size:13px;line-height:1.45}
-.progress{height:8px;background:#e2e8f0;border-radius:8px;overflow:hidden}.bar{height:100%;width:0;background:#0f172a;transition:width .2s}
+.progress{height:8px;background:#e2e8f0;border-radius:8px;overflow:hidden}.bar{height:100%;width:0;background:#0f172a}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#e2e8f0;font-size:12px;font-weight:700;margin-top:8px}
 </style></head><body>
-<header><h1>😴 NapDrive</h1><p>Find a longer route so the nap lasts until you get home.</p></header>
-<main>
-<section class="card">
+<header><h1>😴 NapDrive</h1><p>Find a sensible longer route so the nap lasts until you get home.</p></header>
+<main><section class="card">
 <div class="field"><label>Where are you going?</label><input id="destination" placeholder="Home, postcode, town or address"></div>
-<div class="row"><div class="field"><label>Target journey (minutes)</label><input id="target" type="number" min="5" max="180" value="40"></div>
-<div class="field"><label>Accept within (minutes)</label><input id="tol" type="number" min="1" max="15" value="3"></div></div>
+<div class="row"><div class="field"><label>Target journey</label><input id="target" type="number" min="5" max="180" value="40"></div>
+<div class="field"><label>Accept within</label><input id="tol" type="number" min="1" max="15" value="3"></div></div>
+<div class="field"><label>Route style</label><select id="style"><option value="balanced">Balanced — sensible route</option><option value="quiet">Quiet — minimise major roads</option><option value="efficient">Efficient — least extra driving</option></select></div>
 <button id="find">Find Nap Route</button><div id="prog" class="hidden"><p class="muted" id="status">Working…</p><div class="progress"><div class="bar" id="bar"></div></div></div>
 </section>
-<section id="results" class="hidden"><div class="card"><div class="ok" id="headline"></div>
+<section id="results" class="hidden"><div class="card"><div class="ok" id="headline"></div><span class="badge">Best of 90 candidate routes</span>
 <div class="stats" style="margin-top:12px"><div class="stat"><span class="muted">Normal</span><b id="normal">—</b></div><div class="stat"><span class="muted">NapDrive</span><b id="nap">—</b></div><div class="stat"><span class="muted">Extra</span><b id="extra">—</b></div></div>
-<button id="apple" style="margin-top:12px">Open full route in Apple Maps</button><p class="muted">Apple Maps may recalculate the route when navigation starts.</p></div>
+<button id="apple" style="margin-top:12px">Open full route in Apple Maps</button><p class="muted">Apple Maps may adjust the ETA when it recalculates live traffic.</p></div>
 <div class="card"><div id="map"></div></div></section>
-<section class="card"><p class="muted"><b>Prototype:</b> Location requires HTTPS. Routing uses public OpenStreetMap/OSRM services for testing.</p></section>
+<section class="card"><p class="muted"><b>V2:</b> compares many candidate routes instead of stopping at the first route near the target, while preferring fewer waypoints and sensible detours.</p></section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const $=x=>document.getElementById(x);let map,last;
-const mins=s=>Math.round(s/60);
+const $=x=>document.getElementById(x),mins=s=>Math.round(s/60);let map,last;
 async function j(u){let r=await fetch(u);if(!r.ok)throw Error("Routing service error "+r.status);return r.json()}
-async function geo(q){let a=await j("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q="+encodeURIComponent(q));if(!a.length)throw Error("Destination not found. Try a postcode or full address.");return {lon:+a[0].lon,lat:+a[0].lat}}
-async function route(ps){let c=ps.map(p=>p.lon+","+p.lat).join(";");return j("https://router.project-osrm.org/route/v1/driving/"+c+"?overview=full&geometries=geojson")}
-function cand(a,b,side){let t=.12+Math.random()*.76,dx=b.lon-a.lon,dy=b.lat-a.lat,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L,o=(.004+Math.random()*.045)*side;return {lon:a.lon+dx*t+nx*o,lat:a.lat+dy*t+ny*o}}
-async function findRoute(a,b,target,tol){
- let direct=(await route([a,b])).routes[0],best={r:direct,d:Math.abs(direct.duration/60-target),ps:[a,b]};
- if(direct.duration/60>=target-tol)return {r:direct,n:direct,ps:[a,b]};
- for(let pass=0;pass<2;pass++)for(let i=0;i<35;i++){
-   let side=(i%2?1:-1),ps=pass? [a,cand(a,b,side),cand(a,b,side),b]:[a,cand(a,b,side),b];
-   try{let x=(await route(ps)).routes[0],d=Math.abs(x.duration/60-target);if(d<best.d)best={r:x,d,ps};if(d<=tol)return {r:x,n:direct,ps}}catch(e){}
-   $("status").textContent="Trying route "+(pass*35+i+1)+" of 70…";$("bar").style.width=((pass*35+i+1)/70*100)+"%";
- }
- return {r:best.r,n:direct,ps:best.ps}
-}
-function draw(x){if(map)map.remove();map=L.map("map").setView([x.ps[0].lat,x.ps[0].lon],11);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap contributors"}).addTo(map);let ll=x.r.geometry.coordinates.map(p=>[p[1],p[0]]);L.polyline(ll,{weight:6}).addTo(map);L.marker(ll[0]).addTo(map).bindPopup("Start");L.marker(ll[ll.length-1]).addTo(map).bindPopup("Destination");x.ps.slice(1,-1).forEach((p,i)=>L.circleMarker([p.lat,p.lon],{radius:6}).addTo(map).bindPopup("Nap waypoint "+(i+1)));map.fitBounds(L.latLngBounds(ll),{padding:[20,20]})}
-function apple(ps){let q=ps.map(p=>encodeURIComponent(p.lat+","+p.lon));let u="https://maps.apple.com/directions?source="+q[0]+"&destination="+q.at(-1)+"&mode=driving";if(q.length>2)u+="&waypoint="+q.slice(1,-1).join("&waypoint=");location.href=u}
-$("find").onclick=async()=>{let btn=$("find");btn.disabled=true;$("prog").classList.remove("hidden");try{
- let target=+$("target").value,tol=+$("tol").value;if(!target)throw Error("Enter a target journey time.");let dest=$("destination").value.trim();if(!dest)throw Error("Enter a destination.");
- $("status").textContent="Getting your location…";$("bar").style.width="5%";let pos=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(p=>ok({lon:p.coords.longitude,lat:p.coords.latitude}),()=>no(Error("Please allow location access for this website.")),{enableHighAccuracy:true,timeout:20000}));
- $("status").textContent="Finding destination…";$("bar").style.width="12%";let d=await geo(dest);$("status").textContent="Generating routes…";$("bar").style.width="20%";
- last=await findRoute(pos,d,target,tol);let n=mins(last.n.duration),r=mins(last.r.duration);$("headline").textContent="😴 "+r+"-minute nap route found";$("normal").textContent=n+" min";$("nap").textContent=r+" min";$("extra").textContent=(r-n>=0?"+":"")+(r-n)+" min";$("results").classList.remove("hidden");draw(last);$("apple").onclick=()=>apple(last.ps);$("bar").style.width="100%";$("status").textContent="Done.";window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
-}catch(e){alert(e.message||e)}finally{btn.disabled=false;$("prog").classList.add("hidden")}};
+async function geo(q){let a=await j("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q="+encodeURIComponent(q));if(!a.length)throw Error("Destination not found. Try a postcode or full address.");return{lon:+a[0].lon,lat:+a[0].lat}}
+async function route(ps){return j("https://router.project-osrm.org/route/v1/driving/"+ps.map(p=>p.lon+","+p.lat).join(";")+"?overview=full&geometries=geojson")}
+function point(a,b,t,side,off){let dx=b.lon-a.lon,dy=b.lat-a.lat,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L;return{lon:a.lon+dx*t+nx*off*side,lat:a.lat+dy*t+ny*off*side}}
+function cand(a,b,i,k){let s=i%2?1:-1;if(k===1){let t=.16+(i%10)*.075,o=.006+Math.floor(i/10)*.007;return[a,point(a,b,t,s,o),b]}let t1=.18+(i%7)*.08,t2=.48+(Math.floor(i/7)%6)*.075,o=.010+Math.floor(i/14)*.006;return[a,point(a,b,t1,s,o),point(a,b,t2,s,o*(.8+(i%3)*.15)),b]}
+function score(r,target,normal,style,w){let t=r.duration/60,e=Math.abs(t-target),extra=Math.max(0,r.distance-normal.distance)/1000;let s=e*8+(w*1.2);if(t>target)s+=(t-target)*1.2;if(style==="efficient")s+=extra*.25;if(style==="quiet")s+=w*.2;return s}
+async function findRoute(a,b,target,style){let n=(await route([a,b])).routes[0],best=null,total=0;if(n.duration/60>=target-3)return{r:n,n,ps:[a,b]};for(let k=1;k<=2;k++){let count=k===1?48:42;for(let i=0;i<count;i++){let ps=cand(a,b,i,k);try{let r=(await route(ps)).routes[0],s=score(r,target,n,style,ps.length-2);if(!best||s<best.s)best={r,s,ps}}catch(e){}total++;$("status").textContent="Comparing route "+total+" of 90…";$("bar").style.width=(total/90*100)+"%"}}if(!best)throw Error("I couldn't build a longer route. Try a longer target.");return{r:best.r,n,ps:best.ps}}
+function draw(x){if(map)map.remove();map=L.map("map").setView([x.ps[0].lat,x.ps[0].lon],11);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap contributors"}).addTo(map);let ll=x.r.geometry.coordinates.map(c=>[c[1],c[0]]);L.polyline(ll,{weight:6}).addTo(map);L.marker(ll[0]).addTo(map);L.marker(ll.at(-1)).addTo(map);x.ps.slice(1,-1).forEach(p=>L.circleMarker([p.lat,p.lon],{radius:6}).addTo(map));map.fitBounds(L.latLngBounds(ll),{padding:[20,20]})}
+function apple(ps){let q=ps.map(p=>encodeURIComponent(p.lat+","+p.lon)),u="https://maps.apple.com/directions?source="+q[0]+"&destination="+q.at(-1)+"&mode=driving";if(q.length>2)u+="&waypoint="+q.slice(1,-1).join("&waypoint=");location.href=u}
+$("find").onclick=async()=>{let b=$("find");b.disabled=true;$("prog").classList.remove("hidden");try{let target=+$("target").value,style=$("style").value,dest=$("destination").value.trim();if(!dest)throw Error("Enter a destination.");$("status").textContent="Getting your location…";let pos=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(p=>ok({lon:p.coords.longitude,lat:p.coords.latitude}),()=>no(Error("Please allow location access for this website.")),{enableHighAccuracy:true,timeout:20000}));$("status").textContent="Finding destination…";let d=await geo(dest);$("status").textContent="Generating and comparing routes…";last=await findRoute(pos,d,target,style);let n=mins(last.n.duration),r=mins(last.r.duration);$("headline").textContent="😴 "+r+"-minute nap route found";$("normal").textContent=n+" min";$("nap").textContent=r+" min";$("extra").textContent=(r-n>=0?"+":"")+(r-n)+" min";$("results").classList.remove("hidden");draw(last);$("apple").onclick=()=>apple(last.ps);window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"})}catch(e){alert(e.message||e)}finally{b.disabled=false;$("prog").classList.add("hidden")}};
 </script></body></html>
