@@ -1,1 +1,5 @@
-NapDrive V2 prototype. Upload index.html, manifest.json and README.md to the GitHub Pages repository. V2 compares 90 structured candidate detours and scores them for target-time accuracy, fewer waypoints and sensible extra distance. It uses public Nominatim and OSRM services for prototype testing.
+# NapDrive V3
+
+V3 fixes the Apple Maps mismatch by sampling waypoints directly from the selected OSRM road geometry, then passing those road-snapped coordinates to Apple's multistop directions URL.
+
+Apple documents repeated `waypoint` parameters for multistop driving directions.
