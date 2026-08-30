@@ -1,1 +1,8 @@
-{"name":"NapDrive","short_name":"NapDrive","start_url":".","display":"standalone","theme_color":"#0f172a","background_color":"#f1f5f9"}
+{
+  "name": "NapDrive",
+  "short_name": "NapDrive",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#f1f5f9"
+}

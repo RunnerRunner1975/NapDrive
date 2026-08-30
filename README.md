@@ -1,5 +1,3 @@
-# NapDrive V3
+# NapDrive V4
 
-V3 fixes the Apple Maps mismatch by sampling waypoints directly from the selected OSRM road geometry, then passing those road-snapped coordinates to Apple's multistop directions URL.
-
-Apple documents repeated `waypoint` parameters for multistop driving directions.
+V4 reduces the Apple Maps hand-off to one or two widely spaced road waypoints to reduce U-turns and awkward manoeuvres.
